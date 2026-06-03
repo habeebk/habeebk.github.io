@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — HK Events</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ==================================================
+       BASE
+    ================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      color: #1e293b;
+    }
+
+    /* ==================================================
+       TOP BAR
+    ================================================== */
+    .topbar {
+      background: #0f172a;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar .logo { color: white; font-weight: 700; font-size: 1.1rem; }
+    .topbar .logo span { color: #0ea5e9; }
+    .topbar .admin-tag {
+      font-size: 0.75rem;
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+    }
+    #btn-logout {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: 'Inter', sans-serif;
+      display: none;
+    }
+    #btn-logout:hover { border-color: #64748b; color: #cbd5e1; }
+
+    /* ==================================================
+       LAYOUT
+    ================================================== */
+    .page { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    /* ==================================================
+       CARD
+    ================================================== */
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ==================================================
+       FORM ELEMENTS
+    ================================================== */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 500px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 0.3rem; }
+    label  { font-size: 0.83rem; font-weight: 500; color: #374151; }
+    label .req { color: #ef4444; margin-left: 2px; }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="time"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 0 0.85rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      color: #1e293b;
+      background: white;
+      height: 44px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    textarea { height: auto; padding: 0.6rem 0.85rem; resize: vertical; }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+    }
+
+    /* ==================================================
+       BUTTONS
+    ================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      height: 42px;
+      padding: 0 1.25rem;
+      border: none;
+      border-radius: 9px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary  { background: #0ea5e9; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #0284c7; }
+    .btn-primary:disabled { background: #bae6fd; cursor: not-allowed; }
+    .btn-danger   { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-sm { height: 34px; padding: 0 0.85rem; font-size: 0.82rem; }
+    .btn-ghost-sm {
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      color: #64748b;
+      height: 32px;
+      padding: 0 0.75rem;
+      font-size: 0.8rem;
+    }
+    .btn-ghost-sm:hover { border-color: #94a3b8; }
+
+    /* ==================================================
+       MESSAGES
+    ================================================== */
+    .err-box {
+      background: #fef2f2; border: 1px solid #fecaca;
+      color: #dc2626; padding: 0.65rem 0.85rem;
+      border-radius: 8px; font-size: 0.87rem;
+      margin-top: 0.75rem; display: none;
+    }
+    .err-box.on { display: block; }
+    .ok-box {
+      background: #f0fdf4; border: 1px solid #86efac;
+      color: #16a34a; padding: 0.65rem 0.85rem;
+      border-radius: 8px; font-size: 0.87rem;
+      margin-top: 0.75rem; display: none;
+    }
+    .ok-box.on { display: block; }
+
+    /* ==================================================
+       SPINNER
+    ================================================== */
+    .spin {
+      width: 16px; height: 16px;
+      border: 2px solid #bae6fd;
+      border-top-color: #0ea5e9;
+      border-radius: 50%;
+      animation: sp 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes sp { to { transform: rotate(360deg); } }
+
+    /* ==================================================
+       EVENTS LIST
+    ================================================== */
+    .event-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 11px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      user-select: none;
+      background: white;
+      transition: background 0.15s;
+    }
+    .event-header:hover { background: #f8fafc; }
+    .event-date-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      border-radius: 7px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .event-title { font-weight: 600; font-size: 0.97rem; flex: 1; }
+    .event-meta  { font-size: 0.82rem; color: #94a3b8; }
+    .reg-count {
+      background: #f1f5f9;
+      color: #475569;
+      border-radius: 20px;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .chevron { color: #94a3b8; transition: transform 0.2s; font-size: 0.85rem; }
+    .event-item.open .chevron { transform: rotate(90deg); }
+
+    /* Attendee list inside an expanded event */
+    .attendee-panel {
+      display: none;
+      border-top: 1px solid #f1f5f9;
+      padding: 0.75rem 1rem 1rem;
+      background: #fafafa;
+    }
+    .event-item.open .attendee-panel { display: block; }
+
+    .att-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .att-table th {
+      text-align: left;
+      font-weight: 600;
+      color: #64748b;
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .att-table td {
+      padding: 0.45rem 0.5rem;
+      color: #374151;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .att-table tr:last-child td { border-bottom: none; }
+
+    .panel-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .panel-toolbar .count-text { font-size: 0.85rem; color: #64748b; }
+
+    .empty-state { color: #94a3b8; font-size: 0.87rem; padding: 0.5rem 0; }
+
+    /* ==================================================
+       TABS
+    ================================================== */
+    .tabs {
+      display: flex;
+      gap: 0;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 1.25rem;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.15s;
+      border: none;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+    }
+    .tab.active { background: white; color: #0f172a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    /* ==================================================
+       LOCK SCREEN
+    ================================================== */
+    #lock-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 54px);
+      padding: 1rem;
+    }
+    .lock-card {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .lock-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .lock-title { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 0.3rem; }
+    .lock-sub   { font-size: 0.88rem; color: #64748b; margin-bottom: 1.5rem; }
+    .lock-card input[type="password"] { margin-bottom: 0.85rem; }
+    .lock-card .btn { width: 100%; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="logo">HK <span>Events</span></div>
+    <div style="display:flex; gap:0.75rem; align-items:center">
+      <span class="admin-tag">Admin</span>
+      <button id="btn-logout" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       LOCK SCREEN  —  shown until password is correct
+  ================================================= -->
+  <div id="lock-screen">
+    <div class="lock-card">
+      <div class="lock-icon">🔐</div>
+      <div class="lock-title">Admin Access</div>
+      <div class="lock-sub">Enter the admin password to continue</div>
+      <input type="password" id="pw-input" placeholder="Password"
+             onkeydown="if(event.key==='Enter') unlock()">
+      <div class="err-box" id="pw-err">Incorrect password.</div>
+      <button class="btn btn-primary" onclick="unlock()" style="width:100%; height:46px">
+        Sign In
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       DASHBOARD  —  shown after login
+  ================================================= -->
+  <div class="page" id="dashboard" style="display:none">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-events"  onclick="switchTab('events')">📅 Events</button>
+      <button class="tab"        id="tab-create"  onclick="switchTab('create')">➕ Create Event</button>
+    </div>
+
+    <!-- ===================== TAB: EVENTS ===================== -->
+    <div id="panel-events">
+
+      <!-- Filter bar -->
+      <div style="display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center">
+        <button class="btn btn-ghost-sm filter-btn active" data-f="today"    onclick="setFilter('today')">Today</button>
+        <button class="btn btn-ghost-sm filter-btn"        data-f="upcoming" onclick="setFilter('upcoming')">Upcoming</button>
+        <button class="btn btn-ghost-sm filter-btn"        data-f="all"      onclick="setFilter('all')">All</button>
+        <div style="margin-left:auto">
+          <button class="btn btn-ghost-sm" onclick="loadEvents()">⟳ Refresh</button>
+        </div>
+      </div>
+
+      <div id="events-loading" style="color:#94a3b8; font-size:0.9rem; display:flex; gap:0.5rem; align-items:center">
+        <span class="spin"></span> Loading events…
+      </div>
+      <div id="events-list"></div>
+      <div id="events-empty" style="display:none; color:#94a3b8; font-size:0.9rem; padding:1rem 0">
+        No events found for this filter.
+      </div>
+    </div>
+
+    <!-- ===================== TAB: CREATE EVENT ===================== -->
+    <div id="panel-create" style="display:none">
+      <div class="card">
+        <div class="card-title">➕ Create New Event</div>
+
+        <div class="field" style="margin-bottom:0.75rem">
+          <label for="ev-title">Event Title <span class="req">*</span></label>
+          <input type="text" id="ev-title" placeholder="e.g. Islamic Finance Workshop">
+        </div>
+
+        <div class="grid2" style="margin-bottom:0.75rem">
+          <div class="field">
+            <label for="ev-date">Date <span class="req">*</span></label>
+            <input type="date" id="ev-date">
+          </div>
+          <div class="field">
+            <label for="ev-time">Start Time</label>
+            <input type="time" id="ev-time">
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0.75rem">
+          <label for="ev-loc">Location</label>
+          <input type="text" id="ev-loc" placeholder="e.g. Dubai Islamic Center, Room 3">
+        </div>
+
+        <div class="field" style="margin-bottom:1rem">
+          <label for="ev-desc">Description</label>
+          <textarea id="ev-desc" rows="2" placeholder="Optional notes about this event"></textarea>
+        </div>
+
+        <div class="err-box" id="create-err"></div>
+        <div class="ok-box"  id="create-ok">Event created successfully!</div>
+
+        <button class="btn btn-primary" id="btn-create" onclick="createEvent()">
+          Create Event
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+
+  <script>
+    // ================================================================
+    // CONFIGURATION
+    // ---------------------------------------------------------------
+    // Same Supabase credentials as in event-registration.html
+    // Also set your admin password below.
+    // ================================================================
+    const SUPABASE_URL      = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const ADMIN_PASSWORD    = 'changeme123'; // ← change this to something private
+
+    // ================================================================
+    // SUPABASE CLIENT
+    // ================================================================
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ================================================================
+    // STATE
+    // ================================================================
+    let currentFilter = 'today';    // 'today' | 'upcoming' | 'all'
+    let allEvents     = [];          // cached events from last load
+
+    // ================================================================
+    // AUTH
+    // ================================================================
+    function unlock() {
+      const pw = document.getElementById('pw-input').value;
+      if (pw !== ADMIN_PASSWORD) {
+        document.getElementById('pw-err').classList.add('on');
+        return;
+      }
+      // Store auth in sessionStorage — expires when browser tab closes
+      sessionStorage.setItem('hk_admin', '1');
+      showDashboard();
+    }
+
+    function logout() {
+      sessionStorage.removeItem('hk_admin');
+      location.reload();
+    }
+
+    function showDashboard() {
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display   = '';
+      document.getElementById('btn-logout').style.display  = '';
+      setDefaultDate();
+      loadEvents();
+    }
+
+    // ================================================================
+    // TABS
+    // ================================================================
+    function switchTab(tab) {
+      document.getElementById('panel-events').style.display = tab === 'events' ? '' : 'none';
+      document.getElementById('panel-create').style.display = tab === 'create' ? '' : 'none';
+      document.getElementById('tab-events').classList.toggle('active', tab === 'events');
+      document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+    }
+
+    // ================================================================
+    // EVENTS — LOAD & DISPLAY
+    // ================================================================
+    function setFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.f === f);
+      });
+      renderEvents();
+    }
+
+    async function loadEvents() {
+      document.getElementById('events-loading').style.display = 'flex';
+      document.getElementById('events-list').innerHTML        = '';
+      document.getElementById('events-empty').style.display  = 'none';
+
+      const { data, error } = await db
+        .from('events')
+        .select('id, title, event_date, start_time, location')
+        .order('event_date', { ascending: false })
+        .order('start_time', { ascending: true });
+
+      document.getElementById('events-loading').style.display = 'none';
+
+      if (error || !data) return;
+      allEvents = data;
+      renderEvents();
+    }
+
+    function renderEvents() {
+      const today = new Date().toISOString().split('T')[0];
+      let filtered = allEvents;
+
+      if (currentFilter === 'today') {
+        filtered = allEvents.filter(e => e.event_date === today);
+      } else if (currentFilter === 'upcoming') {
+        filtered = allEvents.filter(e => e.event_date >= today);
+      }
+
+      const list = document.getElementById('events-list');
+      list.innerHTML = '';
+
+      if (filtered.length === 0) {
+        document.getElementById('events-empty').style.display = '';
+        return;
+      }
+
+      document.getElementById('events-empty').style.display = 'none';
+      filtered.forEach(ev => list.appendChild(buildEventItem(ev)));
+    }
+
+    function buildEventItem(ev) {
+      const wrap = document.createElement('div');
+      wrap.className = 'event-item';
+      wrap.id = 'evwrap-' + ev.id;
+
+      const dateStr = formatDate(ev.event_date);
+      const timeStr = ev.start_time ? fmt12(ev.start_time) : '';
+      const locStr  = ev.location   ? `  ·  ${ev.location}` : '';
+
+      wrap.innerHTML = `
+        <div class="event-header" onclick="toggleEvent('${ev.id}', this)">
+          <span class="event-date-badge">${dateStr}</span>
+          <div style="flex:1">
+            <div class="event-title">${ev.title}</div>
+            <div class="event-meta">${timeStr}${locStr}</div>
+          </div>
+          <span class="reg-count" id="rc-${ev.id}">…</span>
+          <span class="chevron">▶</span>
+        </div>
+        <div class="attendee-panel" id="ap-${ev.id}">
+          <div id="ap-loading-${ev.id}" style="color:#94a3b8; font-size:0.88rem; display:flex; gap:0.4rem; align-items:center">
+            <span class="spin"></span> Loading registrations…
+          </div>
+          <div id="ap-content-${ev.id}"></div>
+          <div style="margin-top:0.85rem; display:flex; gap:0.5rem; flex-wrap:wrap">
+            <button class="btn btn-ghost-sm" onclick="exportCSV('${ev.id}', '${ev.title.replace(/'/g,"\\'")}')">
+              ⬇ Export CSV
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEvent('${ev.id}', '${ev.title.replace(/'/g,"\\'")}')">
+              🗑 Delete Event
+            </button>
+          </div>
+        </div>`;
+
+      // Load the registration count in the background
+      loadRegCount(ev.id);
+      return wrap;
+    }
+
+    async function loadRegCount(eventId) {
+      const { count } = await db
+        .from('registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId);
+
+      const el = document.getElementById('rc-' + eventId);
+      if (el) el.textContent = `${count ?? 0} registered`;
+    }
+
+    async function toggleEvent(eventId, headerEl) {
+      const wrap = headerEl.closest('.event-item');
+      const isOpen = wrap.classList.contains('open');
+
+      // Close all others
+      document.querySelectorAll('.event-item.open').forEach(el => el.classList.remove('open'));
+
+      if (!isOpen) {
+        wrap.classList.add('open');
+        await loadAttendees(eventId);
+      }
+    }
+
+    async function loadAttendees(eventId) {
+      const loadEl    = document.getElementById('ap-loading-' + eventId);
+      const contentEl = document.getElementById('ap-content-'  + eventId);
+      contentEl.innerHTML = '';
+      loadEl.style.display = 'flex';
+
+      const { data, error } = await db
+        .from('registrations')
+        .select(`
+          registered_at,
+          attendees ( name, gender, emirate, mobile, country_code, email, profession )
+        `)
+        .eq('event_id', eventId)
+        .order('registered_at');
+
+      loadEl.style.display = 'none';
+
+      if (error || !data || data.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No registrations yet.</div>';
+        return;
+      }
+
+      let rows = data.map((r, i) => {
+        const a = r.attendees;
+        return `<tr>
+          <td>${i + 1}</td>
+          <td>${a.name}</td>
+          <td>${a.gender === 'M' ? 'Male' : 'Female'}</td>
+          <td>${a.country_code} ${a.mobile}</td>
+          <td>${a.emirate}</td>
+          <td>${a.email || '—'}</td>
+          <td>${a.profession || '—'}</td>
+          <td>${fmtDateTime(r.registered_at)}</td>
+        </tr>`;
+      }).join('');
+
+      contentEl.innerHTML = `
+        <div class="panel-toolbar">
+          <span class="count-text">${data.length} attendee${data.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="att-table">
+            <thead><tr>
+              <th>#</th><th>Name</th><th>Gender</th><th>Mobile</th>
+              <th>Emirate</th><th>Email</th><th>Profession</th><th>Registered</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ================================================================
+    // CREATE EVENT
+    // ================================================================
+    function setDefaultDate() {
+      // Pre-fill the date field with today
+      document.getElementById('ev-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    async function createEvent() {
+      const title = document.getElementById('ev-title').value.trim();
+      const date  = document.getElementById('ev-date').value;
+      const time  = document.getElementById('ev-time').value  || null;
+      const loc   = document.getElementById('ev-loc').value.trim()  || null;
+      const desc  = document.getElementById('ev-desc').value.trim() || null;
+
+      const errEl = document.getElementById('create-err');
+      const okEl  = document.getElementById('create-ok');
+      errEl.classList.remove('on');
+      okEl.classList.remove('on');
+
+      if (!title) { errEl.textContent = 'Please enter an event title.'; errEl.classList.add('on'); return; }
+      if (!date)  { errEl.textContent = 'Please select a date.';        errEl.classList.add('on'); return; }
+
+      const btn = document.getElementById('btn-create');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span> Creating…';
+
+      const { error } = await db.from('events').insert({
+        title,
+        event_date:  date,
+        start_time:  time,
+        location:    loc,
+        description: desc,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Create Event';
+
+      if (error) {
+        errEl.textContent = 'Failed to create event — please try again.';
+        errEl.classList.add('on');
+        return;
+      }
+
+      okEl.classList.add('on');
+      // Clear the form
+      document.getElementById('ev-title').value = '';
+      document.getElementById('ev-time').value  = '';
+      document.getElementById('ev-loc').value   = '';
+      document.getElementById('ev-desc').value  = '';
+
+      // Reload events list so the new event appears
+      loadEvents();
+
+      // Auto-switch back to events tab after 1.5s
+      setTimeout(() => { switchTab('events'); okEl.classList.remove('on'); }, 1500);
+    }
+
+    // ================================================================
+    // DELETE EVENT
+    // ================================================================
+    async function deleteEvent(eventId, title) {
+      const confirmed = confirm(
+        `Delete "${title}"?\n\nThis will also remove all registrations for this event. This cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      const { error } = await db.from('events').delete().eq('id', eventId);
+      if (error) { alert('Delete failed — ' + error.message); return; }
+
+      // Remove the card from the DOM immediately
+      const el = document.getElementById('evwrap-' + eventId);
+      if (el) el.remove();
+    }
+
+    // ================================================================
+    // EXPORT CSV
+    // ================================================================
+    async function exportCSV(eventId, eventTitle) {
+      const { data, error } = await db
+        .from('registrations')
+        .select(`
+          registered_at,
+          attendees ( name, gender, emirate, country_code, mobile, email, location, profession )
+        `)
+        .eq('event_id', eventId)
+        .order('registered_at');
+
+      if (error || !data) { alert('Could not load data for export.'); return; }
+
+      const header = ['Name', 'Gender', 'Emirate', 'Country Code', 'Mobile',
+                      'Email', 'Location', 'Profession', 'Registered At'];
+      const rows = data.map(r => {
+        const a = r.attendees;
+        return [
+          a.name, a.gender === 'M' ? 'Male' : 'Female', a.emirate,
+          a.country_code, a.mobile, a.email || '', a.location || '',
+          a.profession || '', fmtDateTime(r.registered_at)
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+      });
+
+      const csv  = [header.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${eventTitle.replace(/[^a-z0-9]/gi, '_')}_registrations.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ================================================================
+    // HELPERS
+    // ================================================================
+    function fmt12(t) {
+      const [h, m] = t.split(':').map(Number);
+      return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+
+    function formatDate(d) {
+      // "2026-06-03" → "3 Jun 2026"
+      const dt = new Date(d + 'T00:00:00');
+      return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function fmtDateTime(iso) {
+      return new Date(iso).toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    // ================================================================
+    // STARTUP
+    // ================================================================
+    if (sessionStorage.getItem('hk_admin') === '1') {
+      showDashboard();
+    }
+
+    // Allow pressing Enter in the password field
+    document.getElementById('pw-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') unlock();
+    });
+  </script>
+</body>
+</html>

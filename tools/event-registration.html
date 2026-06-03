@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- maximum-scale=1 prevents iOS from zooming in on form inputs -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Event Registration</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JavaScript client loaded from CDN — no installation needed -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ==================================================
+       BASE
+    ================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.25rem 1rem 3rem;
+      color: #1e293b;
+    }
+
+    /* ==================================================
+       PAGE HEADER
+    ================================================== */
+    .page-header {
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .logo { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .logo span { color: #0ea5e9; }
+
+    /* ==================================================
+       CARD  —  the white content box
+    ================================================== */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.09);
+    }
+    .card-title    { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 0.3rem; }
+    .card-subtitle { font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* ==================================================
+       FORM ELEMENTS
+    ================================================== */
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.3rem;
+    }
+    label .req { color: #ef4444; margin-left: 2px; }
+    .opt { font-size: 0.75rem; color: #94a3b8; font-weight: 400; margin-left: 3px; }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select {
+      width: 100%;
+      height: 48px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0 1rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: #1e293b;
+      background: white;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+    }
+    input:disabled, select:disabled {
+      background: #f8fafc;
+      color: #94a3b8;
+    }
+
+    /* Custom dropdown arrow */
+    .sel-wrap { position: relative; }
+    .sel-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #94a3b8;
+    }
+
+    /* Phone: country code + number on one line */
+    .phone-row { display: flex; gap: 0.5rem; }
+    .phone-row .cc-wrap { width: 150px; flex-shrink: 0; }
+    .phone-row input  { flex: 1; }
+
+    /* Gender toggle buttons */
+    .gender-row { display: flex; gap: 0.6rem; }
+    .gbtn {
+      flex: 1;
+      height: 48px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      background: white;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .gbtn.active {
+      border-color: #0ea5e9;
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    /* Section label inside the form */
+    .fsec {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 1.25rem 0 0.75rem;
+    }
+
+    /* ==================================================
+       BUTTONS
+    ================================================== */
+    .btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .btn-primary  { background: #0ea5e9; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #0284c7; }
+    .btn-primary:disabled { background: #bae6fd; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      color: #64748b;
+      border: 1.5px solid #e2e8f0;
+      margin-top: 0.5rem;
+    }
+    .btn-ghost:hover { border-color: #94a3b8; color: #374151; }
+
+    /* ==================================================
+       MATCH CARD  —  shown when phone number is found
+    ================================================== */
+    .match-card {
+      margin-top: 0.9rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      display: none;
+    }
+    .match-card.on { display: block; }
+    .match-tag  { font-size: 0.75rem; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .match-name { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.1rem; }
+    .match-sub  { font-size: 0.83rem; color: #64748b; }
+    .match-btns { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
+    .match-btns .btn { height: 44px; font-size: 0.92rem; }
+
+    /* Not-found hint shown below the input */
+    .hint {
+      margin-top: 0.6rem;
+      font-size: 0.87rem;
+      color: #94a3b8;
+      text-align: center;
+      display: none;
+    }
+    .hint.on { display: block; }
+    .hint a  { color: #0ea5e9; cursor: pointer; font-weight: 500; text-decoration: underline; }
+
+    /* ==================================================
+       MESSAGES
+    ================================================== */
+    .info-banner {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      padding: 0.7rem 0.9rem;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .info-banner.on { display: block; }
+
+    .err-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 0.7rem 0.9rem;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      margin-top: 0.75rem;
+      display: none;
+    }
+    .err-box.on { display: block; }
+
+    /* ==================================================
+       SPINNER
+    ================================================== */
+    .spin {
+      width: 18px; height: 18px;
+      border: 2.5px solid #bae6fd;
+      border-top-color: #0ea5e9;
+      border-radius: 50%;
+      animation: sp 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes sp { to { transform: rotate(360deg); } }
+
+    /* ==================================================
+       SUCCESS SCREEN
+    ================================================== */
+    .success-wrap { text-align: center; padding: 1rem 0; }
+    .success-icon { font-size: 4rem; margin-bottom: 0.75rem; }
+    .success-h    { font-size: 1.5rem; font-weight: 700; color: #16a34a; margin-bottom: 0.4rem; }
+    .success-ev   { font-size: 0.95rem; color: #64748b; }
+    .success-name { font-size: 1.1rem; font-weight: 600; color: #0f172a; margin: 0.25rem 0 2rem; }
+
+    hr { border: none; border-top: 1px solid #f1f5f9; margin: 1.1rem 0; }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="logo">HK <span>Events</span></div>
+  </div>
+
+  <!-- ==============================================
+       SCREEN A — Phone entry + match lookup
+  =============================================== -->
+  <div class="card" id="sA">
+
+    <!-- Loading state while fetching today's events -->
+    <div id="sA-loading" style="text-align:center; padding:2rem 0; color:#64748b">
+      <span class="spin"></span>
+      <p style="margin-top:0.65rem; font-size:0.9rem">Loading today's events…</p>
+    </div>
+
+    <!-- Main phone-entry form (hidden until events load) -->
+    <div id="sA-body" style="display:none">
+      <div class="card-title">Welcome!</div>
+      <div class="card-subtitle">Enter your mobile number to register</div>
+
+      <!-- Multiple events: show a dropdown -->
+      <div class="field" id="multi-event-field" style="display:none">
+        <label for="event-sel">Today's Event <span class="req">*</span></label>
+        <div class="sel-wrap">
+          <select id="event-sel"></select>
+        </div>
+      </div>
+
+      <!-- Single event: show a blue info banner -->
+      <div class="info-banner on" id="single-event-banner"></div>
+
+      <!-- Phone input -->
+      <div class="field">
+        <label>Mobile Number <span class="req">*</span></label>
+        <div class="phone-row">
+          <div class="cc-wrap sel-wrap">
+            <select id="cc-sel"></select>
+          </div>
+          <input type="tel" id="mob-input"
+                 placeholder="e.g. 501234567"
+                 maxlength="15" inputmode="numeric">
+        </div>
+      </div>
+
+      <!-- Match found card -->
+      <div class="match-card" id="match-card">
+        <div class="match-tag">✓ Found in our records</div>
+        <div class="match-name" id="match-name"></div>
+        <div class="match-sub"  id="match-sub"></div>
+        <div class="match-btns">
+          <button class="btn btn-primary"  id="btn-yes" onclick="confirmMatch()">Yes, register me</button>
+          <button class="btn btn-ghost"                 onclick="goToForm()">Not me</button>
+        </div>
+      </div>
+
+      <!-- Already registered error -->
+      <div class="err-box" id="err-dupe">You are already registered for this event.</div>
+
+      <!-- Number not found — invite to register -->
+      <div class="hint" id="hint-new">
+        Number not found — <a onclick="goToForm()">register as new attendee →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       SCREEN B — Full registration form
+  =============================================== -->
+  <div class="card" id="sB" style="display:none; margin-top:0.9rem">
+    <div class="card-title">New Registration</div>
+    <div class="card-subtitle" id="sB-event-label"></div>
+
+    <div class="fsec">Required</div>
+
+    <div class="field">
+      <label for="f-name">Full Name <span class="req">*</span></label>
+      <input type="text" id="f-name" placeholder="Your full name" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label>Gender <span class="req">*</span></label>
+      <div class="gender-row">
+        <button class="gbtn" id="gbtn-m" onclick="pickGender('M')">Male</button>
+        <button class="gbtn" id="gbtn-f" onclick="pickGender('F')">Female</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Mobile Number</label>
+      <div class="phone-row">
+        <div class="cc-wrap sel-wrap">
+          <select id="f-cc" disabled></select>
+        </div>
+        <input type="tel" id="f-mob" disabled>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-emirate">Emirate in UAE <span class="req">*</span></label>
+      <div class="sel-wrap">
+        <select id="f-emirate">
+          <option value="">Select your Emirate…</option>
+          <option>Abu Dhabi</option>
+          <option>Dubai</option>
+          <option>Sharjah</option>
+          <option>Ajman</option>
+          <option>Umm Al Quwain</option>
+          <option>Ras Al Khaimah</option>
+          <option>Fujairah</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fsec">Optional</div>
+
+    <div class="field">
+      <label for="f-email">Email <span class="opt">(optional)</span></label>
+      <input type="email" id="f-email" placeholder="your@email.com"
+             autocomplete="email" inputmode="email">
+    </div>
+
+    <div class="field">
+      <label for="f-loc">Location / Area <span class="opt">(optional)</span></label>
+      <input type="text" id="f-loc" placeholder="e.g. Al Barsha, Dubai">
+    </div>
+
+    <div class="field">
+      <label for="f-prof">Profession <span class="opt">(optional)</span></label>
+      <input type="text" id="f-prof" placeholder="e.g. Software Engineer">
+    </div>
+
+    <hr>
+
+    <div class="err-box" id="form-err"></div>
+
+    <button class="btn btn-primary" id="btn-submit" onclick="submitForm()">
+      Complete Registration
+    </button>
+    <button class="btn btn-ghost" onclick="backToPhone()">← Back</button>
+  </div>
+
+  <!-- ==============================================
+       SCREEN C — Success
+  =============================================== -->
+  <div class="card" id="sC" style="display:none; margin-top:0.9rem">
+    <div class="success-wrap">
+      <div class="success-icon">✅</div>
+      <div class="success-h">You're Registered!</div>
+      <div class="success-ev"  id="sC-event"></div>
+      <div class="success-name" id="sC-name"></div>
+      <button class="btn btn-primary" onclick="resetAll()">Register Another Person</button>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       SCREEN D — No events today
+  =============================================== -->
+  <div class="card" id="sD" style="display:none; margin-top:0.9rem; text-align:center">
+    <div style="font-size:2.5rem; margin-bottom:0.75rem">📅</div>
+    <div class="card-title">No Events Today</div>
+    <div class="card-subtitle">
+      There are no events scheduled for today.<br>Please check back later.
+    </div>
+  </div>
+
+  <script>
+    // ================================================================
+    // CONFIGURATION
+    // ---------------------------------------------------------------
+    // 1. Go to supabase.com → your project → Settings → API
+    // 2. Copy "Project URL" and paste it as SUPABASE_URL below
+    // 3. Copy "anon public" key and paste it as SUPABASE_ANON_KEY below
+    // ================================================================
+    const SUPABASE_URL      = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+    // ================================================================
+    // SUPABASE CLIENT
+    // ================================================================
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ================================================================
+    // COUNTRY CODES  (add more here if needed)
+    // ================================================================
+    const COUNTRY_CODES = [
+      { code: '+971', label: '🇦🇪 UAE (+971)' },
+      { code: '+966', label: '🇸🇦 Saudi (+966)' },
+      { code: '+965', label: '🇰🇼 Kuwait (+965)' },
+      { code: '+973', label: '🇧🇭 Bahrain (+973)' },
+      { code: '+974', label: '🇶🇦 Qatar (+974)' },
+      { code: '+968', label: '🇴🇲 Oman (+968)' },
+      { code: '+962', label: '🇯🇴 Jordan (+962)' },
+      { code: '+20',  label: '🇪🇬 Egypt (+20)' },
+      { code: '+92',  label: '🇵🇰 Pakistan (+92)' },
+      { code: '+91',  label: '🇮🇳 India (+91)' },
+      { code: '+94',  label: '🇱🇰 Sri Lanka (+94)' },
+      { code: '+880', label: '🇧🇩 Bangladesh (+880)' },
+      { code: '+63',  label: '🇵🇭 Philippines (+63)' },
+      { code: '+44',  label: '🇬🇧 UK (+44)' },
+      { code: '+1',   label: '🇺🇸 USA/Canada (+1)' },
+    ];
+
+    // ================================================================
+    // APP STATE  —  all mutable data lives here
+    // ================================================================
+    const S = {
+      events:          [],    // today's events loaded on init
+      selectedEventId: null,
+      foundAttendee:   null,  // attendee returned by phone lookup
+      gender:          null,
+      searchTimer:     null,  // debounce handle
+    };
+
+    // ================================================================
+    // INIT  —  runs once when the page loads
+    // ================================================================
+    async function init() {
+      // Populate both country-code dropdowns
+      const ccHTML = COUNTRY_CODES
+        .map(c => `<option value="${c.code}">${c.label}</option>`)
+        .join('');
+      document.getElementById('cc-sel').innerHTML   = ccHTML;
+      document.getElementById('f-cc').innerHTML     = ccHTML;
+
+      // Fetch today's events from Supabase
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const { data: events, error } = await db
+        .from('events')
+        .select('id, title, start_time, location')
+        .eq('event_date', today)
+        .order('start_time');
+
+      document.getElementById('sA-loading').style.display = 'none';
+
+      if (error || !events || events.length === 0) {
+        document.getElementById('sD').style.display = '';
+        return;
+      }
+
+      S.events = events;
+
+      if (events.length === 1) {
+        // Auto-select the single event; show it as a banner
+        S.selectedEventId = events[0].id;
+        const ev = events[0];
+        document.getElementById('single-event-banner').textContent =
+          `📅 ${ev.title}${ev.start_time ? '  ·  ' + fmt12(ev.start_time) : ''}${ev.location ? '  ·  ' + ev.location : ''}`;
+        document.getElementById('single-event-banner').classList.add('on');
+      } else {
+        // Multiple events: show dropdown
+        const sel = document.getElementById('event-sel');
+        sel.innerHTML = events.map(ev =>
+          `<option value="${ev.id}">${ev.title}${ev.start_time ? ' (' + fmt12(ev.start_time) + ')' : ''}</option>`
+        ).join('');
+        S.selectedEventId = events[0].id;
+        sel.addEventListener('change', () => {
+          S.selectedEventId = sel.value;
+          clearMatch();
+        });
+        document.getElementById('multi-event-field').style.display = '';
+        document.getElementById('single-event-banner').classList.remove('on');
+      }
+
+      // Wire up the mobile number input
+      document.getElementById('mob-input').addEventListener('input', onMobileInput);
+      document.getElementById('sA-body').style.display = '';
+    }
+
+    // ================================================================
+    // PHONE NUMBER LOOKUP
+    // ================================================================
+    function onMobileInput() {
+      const digits = document.getElementById('mob-input').value.replace(/\D/g, '');
+      clearMatch();
+      if (digits.length < 7) return; // wait until enough digits entered
+
+      clearTimeout(S.searchTimer);
+      S.searchTimer = setTimeout(() => searchPhone(digits), 600); // debounce 600ms
+    }
+
+    async function searchPhone(mobile) {
+      const cc = document.getElementById('cc-sel').value;
+
+      const { data, error } = await db
+        .from('attendees')
+        .select('id, name, emirate, gender')
+        .eq('country_code', cc)
+        .eq('mobile', mobile)
+        .maybeSingle(); // returns null (not error) when no row found
+
+      if (error) return;
+
+      if (data) {
+        // Attendee found — show confirmation card
+        S.foundAttendee = data;
+        document.getElementById('match-name').textContent = data.name;
+        document.getElementById('match-sub').textContent  =
+          `${data.gender === 'M' ? 'Male' : 'Female'}  ·  ${data.emirate}`;
+        document.getElementById('match-card').classList.add('on');
+      } else {
+        // Not found — show "register as new" prompt
+        S.foundAttendee = null;
+        document.getElementById('hint-new').classList.add('on');
+      }
+    }
+
+    function clearMatch() {
+      S.foundAttendee = null;
+      document.getElementById('match-card').classList.remove('on');
+      document.getElementById('hint-new').classList.remove('on');
+      document.getElementById('err-dupe').classList.remove('on');
+    }
+
+    // ================================================================
+    // CONFIRM RETURNING ATTENDEE
+    // ================================================================
+    async function confirmMatch() {
+      const att = S.foundAttendee;
+      if (!att) return;
+
+      const btn = document.getElementById('btn-yes');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span>';
+
+      // Check for duplicate registration
+      const { data: dup } = await db
+        .from('registrations')
+        .select('id')
+        .eq('event_id',    S.selectedEventId)
+        .eq('attendee_id', att.id)
+        .maybeSingle();
+
+      if (dup) {
+        btn.disabled = false;
+        btn.textContent = 'Yes, register me';
+        document.getElementById('err-dupe').classList.add('on');
+        return;
+      }
+
+      const { error } = await db.from('registrations').insert({
+        event_id:    S.selectedEventId,
+        attendee_id: att.id,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Yes, register me';
+
+      if (error) {
+        document.getElementById('err-dupe').textContent = 'Something went wrong — please try again.';
+        document.getElementById('err-dupe').classList.add('on');
+        return;
+      }
+
+      showSuccess(att.name);
+    }
+
+    // ================================================================
+    // FULL REGISTRATION FORM
+    // ================================================================
+    function goToForm() {
+      // Pre-fill the read-only phone fields in the form
+      const cc  = document.getElementById('cc-sel').value;
+      const mob = document.getElementById('mob-input').value.replace(/\D/g, '');
+      document.getElementById('f-cc').innerHTML = document.getElementById('cc-sel').innerHTML;
+      document.getElementById('f-cc').value     = cc;
+      document.getElementById('f-mob').value    = mob;
+
+      // Show the event name as a subtitle
+      const ev = S.events.find(e => e.id === S.selectedEventId);
+      if (ev) document.getElementById('sB-event-label').textContent =
+        `Registering for: ${ev.title}`;
+
+      document.getElementById('sA').style.display = 'none';
+      document.getElementById('sB').style.display = '';
+    }
+
+    function pickGender(g) {
+      S.gender = g;
+      document.getElementById('gbtn-m').classList.toggle('active', g === 'M');
+      document.getElementById('gbtn-f').classList.toggle('active', g === 'F');
+    }
+
+    async function submitForm() {
+      const name       = document.getElementById('f-name').value.trim();
+      const gender     = S.gender;
+      const cc         = document.getElementById('f-cc').value;
+      const mobile     = document.getElementById('f-mob').value.trim();
+      const emirate    = document.getElementById('f-emirate').value;
+      const email      = document.getElementById('f-email').value.trim()    || null;
+      const location   = document.getElementById('f-loc').value.trim()      || null;
+      const profession = document.getElementById('f-prof').value.trim()     || null;
+
+      const errEl = document.getElementById('form-err');
+      errEl.classList.remove('on');
+
+      if (!name)    { showErr(errEl, 'Please enter your full name.');   return; }
+      if (!gender)  { showErr(errEl, 'Please select your gender.');     return; }
+      if (!emirate) { showErr(errEl, 'Please select your Emirate.');    return; }
+
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span> Registering…';
+
+      // upsert = insert if new, update if same country_code+mobile already exists
+      const { data: att, error: attErr } = await db
+        .from('attendees')
+        .upsert(
+          { country_code: cc, mobile, name, gender, emirate, email, location, profession },
+          { onConflict: 'country_code,mobile' }
+        )
+        .select('id, name')
+        .single();
+
+      if (attErr) {
+        btn.disabled = false;
+        btn.textContent = 'Complete Registration';
+        showErr(errEl, 'Could not save your details — please try again.');
+        return;
+      }
+
+      const { error: regErr } = await db.from('registrations').insert({
+        event_id:    S.selectedEventId,
+        attendee_id: att.id,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Complete Registration';
+
+      if (regErr) {
+        const msg = regErr.code === '23505'
+          ? 'You are already registered for this event.'
+          : 'Registration failed — please try again.';
+        showErr(errEl, msg);
+        return;
+      }
+
+      showSuccess(att.name);
+    }
+
+    function showErr(el, msg) { el.textContent = msg; el.classList.add('on'); }
+
+    // ================================================================
+    // SUCCESS
+    // ================================================================
+    function showSuccess(name) {
+      document.getElementById('sA').style.display = 'none';
+      document.getElementById('sB').style.display = 'none';
+
+      const ev = S.events.find(e => e.id === S.selectedEventId);
+      document.getElementById('sC-event').textContent =
+        ev ? `${ev.title}${ev.start_time ? '  ·  ' + fmt12(ev.start_time) : ''}` : '';
+      document.getElementById('sC-name').textContent = name;
+      document.getElementById('sC').style.display = '';
+    }
+
+    function resetAll() {
+      document.getElementById('sC').style.display = 'none';
+      document.getElementById('sB').style.display = 'none';
+      document.getElementById('sA').style.display = '';
+      document.getElementById('mob-input').value  = '';
+      clearMatch();
+      S.gender        = null;
+      S.foundAttendee = null;
+      document.getElementById('gbtn-m').classList.remove('active');
+      document.getElementById('gbtn-f').classList.remove('active');
+    }
+
+    function backToPhone() {
+      document.getElementById('sB').style.display = 'none';
+      document.getElementById('sA').style.display = '';
+    }
+
+    // ================================================================
+    // HELPERS
+    // ================================================================
+    function fmt12(t) {
+      // "14:30:00" → "2:30 PM"
+      const [h, m] = t.split(':').map(Number);
+      return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>

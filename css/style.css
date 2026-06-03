@@ -281,6 +281,18 @@ body {
 }
 
 /* Muted style for "coming soon" cards */
+/* Clickable card — used for utility links */
+.card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.card-link:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  border-color: #0ea5e9;
+}
+
 .card-muted {
   opacity: 0.55;
   cursor: default;

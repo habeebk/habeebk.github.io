@@ -404,7 +404,7 @@
         <div class="err-box" id="create-err"></div>
         <div class="ok-box"  id="create-ok">Event created successfully!</div>
 
-        <button class="btn btn-primary" id="btn-create" onclick="createEvent()">
+        <button class="btn btn-primary" id="btn-create" onclick="submitCreateEvent()">
           Create Event
         </button>
       </div>
@@ -643,7 +643,7 @@
       document.getElementById('ev-date').value = new Date().toISOString().split('T')[0];
     }
 
-    async function createEvent() {
+    async function submitCreateEvent() {
       const title = document.getElementById('ev-title').value.trim();
       const date  = document.getElementById('ev-date').value;
       const time  = document.getElementById('ev-time').value  || null;

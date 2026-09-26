@@ -327,10 +327,12 @@
     <div class="lock-card">
       <div class="lock-icon">🔐</div>
       <div class="lock-title">Admin Access</div>
-      <div class="lock-sub">Enter the admin password to continue</div>
+      <div class="lock-sub">Sign in with your admin account</div>
+      <input type="text" id="pw-email" placeholder="Email" autocomplete="email"
+             style="margin-bottom:0.6rem" onkeydown="if(event.key==='Enter') unlock()">
       <input type="password" id="pw-input" placeholder="Password"
              onkeydown="if(event.key==='Enter') unlock()">
-      <div class="err-box" id="pw-err">Incorrect password.</div>
+      <div class="err-box" id="pw-err">Incorrect email or password.</div>
       <button class="btn btn-primary" onclick="unlock()" style="width:100%; height:46px">
         Sign In
       </button>
@@ -421,7 +423,6 @@
     // ================================================================
     const SUPABASE_URL      = 'https://klypiihizmfyimtdxayn.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXBpaWhpem1meWltdGR4YXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDIwOTMsImV4cCI6MjA5NjA3ODA5M30.2vSm7KBVpXH987uB5yvykpA387uQ3EfxE1RKyr2p4PU';
-    const ADMIN_PASSWORD    = 'Dub@!7272'; // ← change this to something private
 
     // ================================================================
     // SUPABASE CLIENT
@@ -437,19 +438,19 @@
     // ================================================================
     // AUTH
     // ================================================================
-    function unlock() {
-      const pw = document.getElementById('pw-input').value;
-      if (pw !== ADMIN_PASSWORD) {
-        document.getElementById('pw-err').classList.add('on');
-        return;
-      }
-      // Store auth in sessionStorage — expires when browser tab closes
-      sessionStorage.setItem('hk_admin', '1');
+    async function unlock() {
+      const email = document.getElementById('pw-email').value.trim();
+      const pw    = document.getElementById('pw-input').value;
+      const errEl = document.getElementById('pw-err');
+      errEl.classList.remove('on');
+
+      const { error } = await db.auth.signInWithPassword({ email, password: pw });
+      if (error) { errEl.classList.add('on'); return; }
       showDashboard();
     }
 
-    function logout() {
-      sessionStorage.removeItem('hk_admin');
+    async function logout() {
+      await db.auth.signOut();
       location.reload();
     }
 
@@ -769,14 +770,10 @@
     // ================================================================
     // STARTUP
     // ================================================================
-    if (sessionStorage.getItem('hk_admin') === '1') {
-      showDashboard();
-    }
-
-    // Allow pressing Enter in the password field
-    document.getElementById('pw-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter') unlock();
-    });
+    (async () => {
+      const { data: { session } } = await db.auth.getSession();
+      if (session) showDashboard();
+    })();
   </script>
 </body>
 </html>
